@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Sonic - Sound Transmission</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap');
+
+        /* Fade-in animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Logo bounce effect */
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Pulsating glow effect */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 10px rgba(0, 150, 255, 0.6); }
+            50% { box-shadow: 0 0 20px rgba(0, 150, 255, 1); }
+            100% { box-shadow: 0 0 10px rgba(0, 150, 255, 0.6); }
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            text-align: center;
+            background: linear-gradient(to bottom, #1E2A38, #0C1A26);
+            color: white;
+            margin: 0;
+            animation: fadeIn 1s ease-out;
+        }
+
+        .landing-page {
+            animation: fadeIn 1s ease-out;
+        }
+
+        .logo {
+            width: 120px;
+            height: auto;
+            animation: bounce 2s infinite;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            animation: fadeIn 1.2s ease-in-out;
+        }
+
+        .headline-text {
+            max-width: 600px;
+            font-size: 16px;
+            font-weight: 300;
+            line-height: 1.6;
+            opacity: 0.9;
+            animation: fadeIn 1.5s ease-in-out;
+        }
+
+        p {
+            font-size: 18px;
+            font-weight: 400;
+            margin-bottom: 20px;
+            animation: fadeIn 1.8s ease-in-out;
+        }
+
+        /* Circular Start Transmission Button */
+        .start-btn {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, #4A90E2, #1C3D5A);
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            animation: pulse 1.5s infinite;
+            transition: transform 0.3s ease-in-out;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+
+        .start-btn:hover {
+            background: #2E5E8D;
+            transform: scale(1.1);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="landing-page">
+        <img src="WhatsApp_Image_2025-03-29_at_10.03.35-removebg-preview.png" alt="Pixel Sonic Logo" class="logo">
+        <h1>Welcome to Pixel Sonic</h1>
+        <p class="headline-text">
+            Pixel Sonic is an innovative platform that transforms images and text into sound and then decodes that sound back into meaningful words. 
+            The fusion of sound and vision, Pixel Sonic opens up a world of possibilities! This project explores an esoteric way to transfer complex 
+            data like images through sound. This is a prototype of our endeavor.
+        </p>
+        <p>Transmit data using sound waves effortlessly.</p>
+
+        <!-- Circular Start Transmission Button -->
+        <button class="start-btn" onclick="startApp()">Start</button>
+    </div>
+
+    <script>
+        function startApp() {
+            window.location.href = "main.html";  // Redirects to the main transmission page
+        }
+    </script>
+
+</body>
+</html>
