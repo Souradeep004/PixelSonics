@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap');
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #F6F8D5;
+            color: #205781;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        
+        .container {
+            display: flex;
+            justify-content: space-evenly;
+            gap: 30px;
+            align-items: center;
+            width: 90%;
+            max-width: 1200px;
+            margin: auto;
+        }
+        
+        .box {
+            padding: 50px; /* Increased padding */
+            background: linear-gradient(135deg, #4F959D, #72B5C5);
+            border-radius: 15px;
+            box-shadow: 0px 6px 10px rgba(0, 0, 0, 0.2);
+            width: 500px; /* Increased width */
+            text-align: center;
+            transition: transform 0.3s ease-in-out;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-left: -20px; /* Shift encoded box to the left */
+            margin-right: -20px; /* Shift decoded box to the right */
+        }
+        
+        .box:hover {
+            transform: scale(1.05);
+        }
+        .logo {
+            height: 250px; /* Adjust height as needed */
+            margin-right: 40px; /* Space between logo and text */
+            vertical-align: middle; /* Align with text */
+            border-radius: 90px; /* Optional: adds rounded corners */
+        }
+
+        .input-container {
+            display: flex;
+            align-items: center;
+            position: relative;
+            margin-bottom: 15px;
+        }
+        
+        textarea {
+            font-size: 20px; /* Increased font size */
+            padding: 15px;
+            border-radius: 12px;
+            border: 3px solid #98D2C0; /* More prominent border */
+            background-color: #F6F8D5;
+            color: #205781;
+            resize: none;
+            margin-right: 10px;
+        }
+        
+        .upload-container {
+            cursor: pointer;
+            width: 60px; /* Adjusted size */
+            height: 60px; /* Adjusted size */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #98D2C0;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .upload-container:hover {
+            transform: scale(1.1);
+        }
+        
+        .upload-icon {
+            width: 35px; /* Adjusted size */
+            height: 35px; /* Adjusted size */
+        }
+        
+        button {
+            background: linear-gradient(90deg, #205781, #4F959D);
+            color: white;
+            border: none;
+            padding: 15px 22px; /* Enhanced padding */
+            font-size: 18px; /* Bigger text */
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s ease-in-out, transform 0.2s ease-in-out; /* Enhanced transition */
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+            margin-top: 15px;
+        }
+        
+        button:hover {
+            background: #F6F8D5;
+            color: #205781;
+            box-shadow: 0px 4px 15px rgba(72, 185, 205, 0.8);
+            transform: scale(1.1); /* Enhanced hover effect */
+        }
+        
+        .circle-container {
+            position: relative;
+            width: 5000px;
+            height: 300px;
+            border-radius: 80%;
+            background: radial-gradient(circle, rgba(0,0,0,0.8) 10%, rgba(32,87,129,0.9) 90%);
+            border: 8px solid #98D2C0;
+            box-shadow: 0px 0px 25px rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+        }
+        
+        #imagePreview {
+            max-width: 100px;
+            max-height: 100px;
+            display: none;
+            margin-top: 10px;
+        }
+        
+        /* Added for audio upload preview */
+        #audioPreview {
+            display: none;
+            margin-top: 10px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .circle-container.active {
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.15); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+    </style>
+</head>
+<body>
+
+    <img src="logo.jpeg" alt="Logo" class="logo"> 
+
+    <div class="container">
+        <div class="box">
+            <h2>🔊 Encode Data</h2>
+            <div class="input-container">
+                <textarea id="encodeInput" placeholder="Enter text to encode"></textarea>
+                <div class="upload-container" onclick="document.getElementById('imageInput').click();">
+                    <img src="uploadimage Background Removed.png" alt="Upload Image" class="upload-icon">
+                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                </div>
+            </div>
+            <img id="imagePreview" alt="Image Preview">
+            <br>
+            <button onclick="encodeMessage()">Transmit Sound</button>
+        </div>
+
+        <div class="circle-container">
+            <canvas id="waveCanvas"></canvas>
+        </div>
+
+        <div class="box">
+            <h2>🎵 Decode Sound</h2>
+            <div class="input-container">
+                <textarea id="decodeOutput" placeholder="Decoded data will appear here" readonly></textarea>
+                <div class="upload-container" onclick="document.getElementById('audioInput').click();">
+                    <img src="uploadimage Background Removed.png" alt="Upload Sound" class="upload-icon">
+                    <input type="file" id="audioInput" accept="audio/*" style="display: none;">
+                </div>
+            </div>
+            <div id="audioPreview">No audio selected</div>
+            <br>
+            <button onclick="startDecoding()">Decode Sound</button>
+        </div>
+    </div>
+</body>
+<script>
+    const canvas = document.getElementById("waveCanvas");
+    const ctx = canvas.getContext("2d");
+    const imageInput = document.getElementById("imageInput");
+    const audioInput = document.getElementById("audioInput");
+    const imagePreview = document.getElementById("imagePreview");
+    const audioPreview = document.getElementById("audioPreview");
+    const encodeInput = document.getElementById("encodeInput");
+    const decodeOutput = document.getElementById("decodeOutput");
+
+    canvas.width = 250;
+    canvas.height = 250;
+
+    let audioContext, analyser;
+    let waveOffset = 0;
+    let currentImage = null;
+    let currentAudio = null;
+
+    // Handle image upload
+    imageInput.addEventListener("change", function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (event) {
+            imagePreview.src = event.target.result;
+            imagePreview.style.display = "block";
+            currentImage = event.target.result;
+            encodeInput.value = ""; // Clear text input
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Handle audio upload for decoding
+    audioInput.addEventListener("change", function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        currentAudio = file;
+        audioPreview.textContent = file.name;
+        audioPreview.style.display = "block";
+    });
+
+    async function encodeMessage() {
+        let data = {};
+        if (currentImage) {
+            data.image = currentImage;
+        } else if (encodeInput.value.trim()) {
+            data.text = encodeInput.value;
+        } else {
+            return alert("Please enter text or upload an image!");
+        }
+
+        try {
+            const response = await fetch("http://localhost:5000/generate_sound", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
+
+            if (!response.ok) throw new Error("Failed to generate sound");
+
+            const blob = await response.blob();
+            const audioUrl = URL.createObjectURL(blob);
+            const audio = new Audio(audioUrl);
+            audio.play();
+
+            // Auto download the generated sound file
+            const a = document.createElement("a");
+            a.href = audioUrl;
+            a.download = "encoded_sound.wav";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            // Initialize audio visualization
+            visualizeAudio(audio);
+        } catch (error) {
+            console.error(error);
+            alert("Error generating sound: " + error.message);
+        }
+    }
+
+    function visualizeAudio(audioElement) {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 512;
+        }
+
+        let source = audioContext.createMediaElementSource(audioElement);
+        source.connect(analyser);
+        analyser.connect(audioContext.destination);
+
+        animateWave();
+    }
+
+    function animateWave() {
+        if (!analyser) return;
+    
+        setTimeout(() => { // Introduce a delay
+            requestAnimationFrame(animateWave);
+        }, 150); // Increased delay slows down visualization updates
+    
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyser.getByteTimeDomainData(dataArray);
+    
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "rgb(0, 255, 255)";
+        ctx.beginPath();
+    
+        const sliceWidth = (canvas.width * 1.0) / bufferLength;
+        let x = 0;
+    
+        for (let i = 0; i < bufferLength; i++) {
+            const v = dataArray[i] / 128.0;
+            const y = v * canvas.height / 2;
+    
+            if (i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+    
+            x += sliceWidth;
+        }
+    
+        ctx.lineTo(canvas.width, canvas.height / 2);
+        ctx.stroke();
+    }
+    let currentImageUrl = null; // Store the last image URL
+
+    async function startDecoding() {
+        // Get audio file
+        const file = document.getElementById("audioInput").files[0];
+        if (!file) {
+            alert("Please upload an audio file first!");
+            return;
+        }
+    
+        // Show decoding message
+        const decodeOutput = document.getElementById("decodeOutput");
+        decodeOutput.value = "Decoding...";
+        decodeOutput.style.textAlign = "center";
+        decodeOutput.style.fontWeight = "bold";
+    
+        try {
+            // Prepare and send request
+            const formData = new FormData();
+            formData.append("audio", file);
+    
+            const response = await fetch("http://localhost:5000/decode_sound", {
+                method: "POST",
+                body: formData,
+            });
+    
+            if (!response.ok) {
+                throw new Error(`Server responded with status: ${response.status}`);
+            }
+    
+            const contentType = response.headers.get("Content-Type");
+            console.log("Content-Type:", contentType);
+    
+            // Clear loading message
+            decodeOutput.value = "";
+            decodeOutput.style.textAlign = "left";
+            decodeOutput.style.fontWeight = "normal";
+    
+            // Handle JSON text response
+            if (contentType && contentType.includes("application/json")) {
+                const data = await response.json();
+                // Display just the text property if available, otherwise show full response
+                decodeOutput.value = typeof data.text !== "undefined" ? data.text : JSON.stringify(data, null, 2);
+            }
+            // Handle image response
+            else if (contentType && contentType.includes("image/")) {
+                const blob = await response.blob();
+                if (blob.size === 0) throw new Error("Received empty image file");
+                
+                const imageUrl = URL.createObjectURL(blob);
+                displayImage(imageUrl);
+                autoDownloadImage(blob, contentType);
+            }
+            // Handle plain text response
+            else {
+                const text = await response.text();
+                decodeOutput.value = text;
+            }
+        } catch (error) {
+            console.error("Decoding failed:", error);
+            decodeOutput.value = `Error: ${error.message}`;
+        }
+    }
+    
+    function displayImage(imageUrl) {
+        // Create or clear result container
+        const resultContainer = document.getElementById("resultContainer") || document.createElement("div");
+        resultContainer.id = "resultContainer";
+        resultContainer.style.margin = "20px 0";
+        resultContainer.innerHTML = "";
+        document.body.appendChild(resultContainer);
+    
+        // Display image
+        const img = document.createElement("img");
+        img.src = imageUrl;
+        img.style.maxWidth = "100%";
+        img.style.maxHeight = "400px";
+        img.style.display = "block";
+        img.style.margin = "0 auto";
+        img.style.border = "1px solid #ddd";
+        resultContainer.appendChild(img);
+    }
+    
+    function autoDownloadImage(blob, contentType) {
+        // Create download URL
+        const downloadUrl = URL.createObjectURL(blob);
+        
+        // Create and trigger download
+        const a = document.createElement("a");
+        a.href = downloadUrl;
+        a.download = `decoded-image-${new Date().getTime()}.${contentType.includes("png") ? "png" : "jpg"}`;
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        
+        // Cleanup
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(downloadUrl);
+        }, 100);
+    }
+    
+    // Make the function available globally
+    window.startDecoding = startDecoding;
+</script>
+</body>
+</html>

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound Wave Data Transmission</title>
+    <script src="https://unpkg.com/ggwave"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap');
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #F6F8D5;
+            color: #205781;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 90%;
+            max-width: 1200px;
+        }
+
+        .box {
+            padding: 30px;
+            background: #4F959D;
+            border-radius: 15px;
+            box-shadow: 0px 6px 10px rgba(0, 0, 0, 0.2);
+            width: 340px;
+            text-align: center;
+            transition: transform 0.3s ease-in-out;
+            color: white;
+        }
+
+        .box:hover {
+            transform: scale(1.05);
+        }
+
+        /* Input & Upload Icon Container */
+        .input-container {
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+
+        /* Text Input */
+        textarea {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            background-color: #F6F8D5;
+            color: #205781;
+            font-size: 16px;
+            resize: none;
+        }
+
+        /* File Upload Icon (Right Side) */
+        .upload-container {
+            cursor: pointer;
+            margin-left: 10px;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #98D2C0;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .upload-container:hover {
+            transform: scale(1.1);
+        }
+
+        .upload-icon {
+            width: 30px;
+            height: 30px;
+        }
+
+        button {
+            background-color: #205781;
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: #98D2C0;
+            color: #205781;
+        }
+
+        /* Sound Wave Visualization */
+        .circle-container {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            background: black;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* AI Assistant */
+        .assistant-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .assistant {
+            display: inline-block;
+            width: 100px;
+            height: 100px;
+            background-color: #98D2C0;
+            border-radius: 50%;
+            position: relative;
+            animation: bounce 2s infinite;
+        }
+
+        .assistant .mouth {
+            position: absolute;
+            bottom: 30%;
+            left: 50%;
+            width: 20px;
+            height: 10px;
+            border-radius: 50%;
+            background: black;
+            transform: translateX(-50%);
+            animation: speak 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes speak {
+            0%, 100% { height: 10px; }
+            50% { height: 5px; }
+        }
+    </style>
+</head>
+<body>
+
+<h1>Sound Wave Data Transmission (Between Computers)</h1>
+
+<div class="container">
+    <!-- Encoding Box (Left) -->
+    <div class="box">
+        <h2>🔊 Encode Data</h2>
+        <div class="input-container">
+            <textarea id="encodeInput" placeholder="Enter text to encode"></textarea>
+            
+            <!-- Custom File Upload Icon (Right Side) -->
+            <div class="upload-container" onclick="document.getElementById('imageInput').click();">
+                <img src="uploadimage Background Removed.png" alt="Upload Image" class="upload-icon">
+                <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="handleImageUpload()">
+            </div>
+        </div>
+
+        <br>
+        <button onclick="encodeMessage()">Transmit Sound</button>
+    </div>
+
+    <!-- Circular Sound Wave Graph (Center) -->
+    <div class="circle-container">
+        <canvas id="waveCanvas"></canvas>
+    </div>
+
+    <!-- Decoding Box (Right) -->
+    <div class="box">
+        <h2>🎵 Decode Sound</h2>
+        <p>Listening for sound waves...</p>
+        <textarea id="decodeOutput" placeholder="Decoded text will appear here" readonly></textarea>
+        <br>
+        <button onclick="startDecoding()">Start Listening</button>
+    </div>
+</div>
+
+<!-- AI Assistant -->
+<div class="assistant-container">
+    <div class="assistant">
+        <div class="mouth"></div>
+    </div>
+    <p id="assistantText">Click "Transmit Sound" to send data.</p>
+</div>
+<script>
+    const canvas = document.getElementById("waveCanvas");
+    const ctx = canvas.getContext("2d");
+    const assistantText = document.getElementById("assistantText");
+
+    canvas.width = 250;
+    canvas.height = 250;
+
+    let audioContext, analyser, microphone;
+    let waveOffset = 0;
+    let frequencyData = new Uint8Array(256);
+
+    async function startMicrophone() {
+        try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 512;
+
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            microphone = audioContext.createMediaStreamSource(stream);
+            microphone.connect(analyser);
+            
+            animateWave();
+        } catch (err) {
+            alert("Microphone access denied. Please allow microphone access.");
+        }
+    }
+
+    function animateWave() {
+        requestAnimationFrame(animateWave);
+        analyser.getByteFrequencyData(frequencyData);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.beginPath();
+        
+        let centerY = canvas.height / 2;
+        let amplitude = frequencyData[50] / 4;
+        let colorIntensity = frequencyData[100];
+
+        ctx.strokeStyle = `rgb(${colorIntensity}, 255, ${255 - colorIntensity})`;
+        ctx.lineWidth = 3;
+
+        for (let x = 0; x < canvas.width; x++) {
+            let y = centerY + Math.sin((x + waveOffset) * 0.12) * amplitude;
+            ctx.lineTo(x, y);
+        }
+
+        ctx.stroke();
+        waveOffset += 2;
+    }
+
+    function encodeMessage() {
+        let text = document.getElementById("encodeInput").value;
+        if (text.trim() === "") {
+            alert("Please enter text to encode!");
+            return;
+        }
+
+        assistantText.innerText = "Encoding and transmitting sound...";
+        speakText("Encoding and transmitting sound");
+
+        let wave = ggwave.encode({ payload: text, protocolId: 0, volume: 1.0 });
+        let audio = new Audio(wave);
+        audio.play();
+
+        startMicrophone();
+    }
+
+    function startDecoding() {
+        assistantText.innerText = "Listening for incoming sound...";
+        speakText("Listening for incoming sound");
+
+        startMicrophone();
+        ggwave.init({ onDecoded: (message) => {
+            document.getElementById("decodeOutput").value = message;
+            alert("Message received: " + message);
+        }});
+    }
+
+    function speakText(text) {
+        let speech = new SpeechSynthesisUtterance(text);
+        speech.rate = 1;
+        window.speechSynthesis.speak(speech);
+    }
+</script>
+
+</body>
+</html>
