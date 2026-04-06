@@ -1,1 +1,4 @@
 venv/
+test/
+test_pixelsonics.py
+./__pycache__

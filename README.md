@@ -110,10 +110,4 @@ python -m pytest test/ -v
 | `SAMPLE_RATE` | 44 100 Hz | Audio sample rate                  |
 | `BIT_DURATION`| 5 ms      | Duration per symbol (~200 bps raw) |
 | `PREAMBLE`    | 32 bits   | Sync preamble symbols              |
-
-## Roadmap
-
-- **Phase 1** ✅ FSK + zstd + XOR parity + CRC32 framing  
-- **Phase 2** 🔲 Reed-Solomon ECC (`pip install reedsolo`, see `ecc/ecc.py`)  
-- **Phase 3** 🔲 OFDM multi-carrier modulation  
-- **Phase 4** 🔲 Adaptive bitrate + interleaving  
+ 

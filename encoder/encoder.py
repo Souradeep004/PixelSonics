@@ -64,6 +64,7 @@ def _load_text(text: str) -> tuple[bytes, str]:
 def _load_file(path: str) -> tuple[bytes, str]:
     ext = os.path.splitext(path)[1].lower()
     type_map = {
+        ".txt": "text/plain",
         ".png": "image/png",
         ".jpg": "image/jpeg",
         ".jpeg": "image/jpeg",
