@@ -1,3 +1,20 @@
+import os
+import sys
+
+import unittest
+
+import numpy as np
+
+from compression import compress, compression_ratio, decompress
+from decoder import Decoder
+from ecc import ECCError
+from ecc import decode as ecc_decode
+from ecc import encode as ecc_encode
+from ecc.ecc import _RS_AVAILABLE, ReedSolomonECC, xor_decode, xor_encode
+from encoder import Encoder
+from framing import FramingError, deframe, frame
+from modulation import demodulate, modulate
+
 """
 PixelSonics - Test Suite
 
@@ -5,8 +22,6 @@ Run with:  python -m pytest test/ -v
 Or:        python test/test_pixelsonics.py
 """
 
-import sys
-import os
 
 # Ensure the PixelSonics project root (parent of test/) is on sys.path.
 # os.path.abspath + dirname twice works on Windows and Unix alike.
@@ -14,17 +29,6 @@ _TEST_DIR = os.path.dirname(os.path.abspath(__file__))  # …/PixelSonics/test
 _ROOT_DIR = os.path.dirname(_TEST_DIR)  # …/PixelSonics
 if _ROOT_DIR not in sys.path:
     sys.path.insert(0, _ROOT_DIR)
-
-import unittest
-import io
-import numpy as np
-
-from compression import compress, decompress, compression_ratio
-from framing import frame, deframe, FramingError
-from ecc import encode as ecc_encode, decode as ecc_decode, ECCError
-from modulation import modulate, demodulate
-from encoder import Encoder
-from decoder import Decoder, DecoderError
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -159,8 +163,6 @@ class TestFraming(unittest.TestCase):
 # ECC Tests  (Reed-Solomon via reedsolo)
 # ─────────────────────────────────────────────────────────────────────────────
 
-from ecc.ecc import ReedSolomonECC, xor_encode, xor_decode, _RS_AVAILABLE
-
 
 class TestECC(unittest.TestCase):
     def test_rs_available(self):
@@ -288,7 +290,7 @@ class TestModulation(unittest.TestCase):
 
     def test_waveform_length(self):
         """Waveform length scales with data size."""
-        from modulation import SAMPLE_RATE, BIT_DURATION, PREAMBLE_BITS
+        from modulation import BIT_DURATION, PREAMBLE_BITS, SAMPLE_RATE
 
         data = b"\xde\xad"  # 2 bytes = 16 bits
         expected_samples = int(SAMPLE_RATE * BIT_DURATION) * (16 + PREAMBLE_BITS)
