@@ -19,19 +19,28 @@ from dataclasses import dataclass
 import numpy as np
 
 from compression import decompress
-from ecc.ecc import decode as ecc_decode, ECCError
+from ecc import decode as ecc_decode, ECCError
 from framing import deframe, FramingError
-from modulation import demodulate, SAMPLE_RATE, BIT_DURATION, PREAMBLE_BITS, FREQ_0, FREQ_1
+from modulation import (
+    demodulate,
+    SAMPLE_RATE,
+    BIT_DURATION,
+    PREAMBLE_BITS,
+    FREQ_0,
+    FREQ_1,
+)
 
 
 # ─── Result type ─────────────────────────────────────────────────────────────
 
+
 @dataclass
 class DecodeResult:
     """Holds the recovered payload plus its original metadata."""
-    data: bytes          # Recovered original bytes
-    media_type: str      # e.g. "text/plain", "image/png", "application/pdf"
-    original_size: int   # Declared size from header
+
+    data: bytes  # Recovered original bytes
+    media_type: str  # e.g. "text/plain", "image/png", "application/pdf"
+    original_size: int  # Declared size from header
 
     def as_text(self, encoding: str = "utf-8") -> str:
         """Convenience: decode bytes as text."""
@@ -45,6 +54,7 @@ class DecodeResult:
 
 
 # ─── Header parsing ──────────────────────────────────────────────────────────
+
 
 class DecoderError(Exception):
     """Raised for any unrecoverable decoding error."""
@@ -61,7 +71,7 @@ def _parse_header(stream: io.BytesIO) -> tuple[str, int]:
     if len(length_bytes) < 4:
         raise DecoderError("Stream too short to contain header length prefix.")
 
-    header_len, = struct.unpack(">I", length_bytes)
+    (header_len,) = struct.unpack(">I", length_bytes)
     header_json = stream.read(header_len)
     if len(header_json) < header_len:
         raise DecoderError(
@@ -80,6 +90,7 @@ def _parse_header(stream: io.BytesIO) -> tuple[str, int]:
 
 # ─── Main Decoder ─────────────────────────────────────────────────────────────
 
+
 class Decoder:
     """
     Full PixelSonics decoding pipeline.
@@ -96,14 +107,14 @@ class Decoder:
 
     def __init__(
         self,
-        ecc_block_size: int = 64,
+        ecc_nsym: int = 10,
         freq_0: float = FREQ_0,
         freq_1: float = FREQ_1,
         sample_rate: int = SAMPLE_RATE,
         bit_duration: float = BIT_DURATION,
         preamble_bits: int = PREAMBLE_BITS,
     ):
-        self.ecc_block_size = ecc_block_size
+        self.ecc_nsym = ecc_nsym
         self.freq_0 = freq_0
         self.freq_1 = freq_1
         self.sample_rate = sample_rate
@@ -124,7 +135,7 @@ class Decoder:
         )
 
     def ecc_decode(self, data: bytes) -> bytes:
-        return ecc_decode(data, block_size=self.ecc_block_size)
+        return ecc_decode(data, nsym=self.ecc_nsym)
 
     def decompress(self, data: bytes) -> bytes:
         return decompress(data)
@@ -205,6 +216,7 @@ class Decoder:
             DecodeResult.
         """
         import wave
+
         with wave.open(wav_path, "r") as wf:
             n_frames = wf.getnframes()
             raw_pcm = wf.readframes(n_frames)
@@ -236,7 +248,7 @@ def _split_packets(data: bytes) -> list[bytes]:
     packets = []
     i = 0
     while i <= len(data) - (SYNC_SIZE + HEADER_SIZE + CRC_SIZE):
-        if data[i:i + SYNC_SIZE] != SYNC_MAGIC:
+        if data[i : i + SYNC_SIZE] != SYNC_MAGIC:
             i += 1
             continue
 

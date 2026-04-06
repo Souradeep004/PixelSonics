@@ -20,9 +20,16 @@ import struct
 import numpy as np
 
 from compression import compress
-from ecc.ecc import encode as ecc_encode
+from ecc import encode as ecc_encode
 from framing import frame, DEFAULT_CHUNK_SIZE
-from modulation import modulate, SAMPLE_RATE, BIT_DURATION, PREAMBLE_BITS, FREQ_0, FREQ_1
+from modulation import (
+    modulate,
+    SAMPLE_RATE,
+    BIT_DURATION,
+    PREAMBLE_BITS,
+    FREQ_0,
+    FREQ_1,
+)
 
 # ─── Supported input types ───────────────────────────────────────────────────
 
@@ -30,6 +37,7 @@ SUPPORTED_TYPES = ("text", "image", "csv", "pdf", "bytes")
 
 
 # ─── Header helpers ──────────────────────────────────────────────────────────
+
 
 def _build_header(media_type: str, original_size: int) -> bytes:
     """
@@ -48,6 +56,7 @@ def _build_header(media_type: str, original_size: int) -> bytes:
 
 # ─── Input normalisation ─────────────────────────────────────────────────────
 
+
 def _load_text(text: str) -> tuple[bytes, str]:
     return text.encode("utf-8"), "text/plain"
 
@@ -55,13 +64,13 @@ def _load_text(text: str) -> tuple[bytes, str]:
 def _load_file(path: str) -> tuple[bytes, str]:
     ext = os.path.splitext(path)[1].lower()
     type_map = {
-        ".png":  "image/png",
-        ".jpg":  "image/jpeg",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
         ".jpeg": "image/jpeg",
-        ".gif":  "image/gif",
-        ".bmp":  "image/bmp",
-        ".csv":  "text/csv",
-        ".pdf":  "application/pdf",
+        ".gif": "image/gif",
+        ".bmp": "image/bmp",
+        ".csv": "text/csv",
+        ".pdf": "application/pdf",
     }
     media_type = type_map.get(ext, "application/octet-stream")
     with open(path, "rb") as f:
@@ -82,7 +91,7 @@ def _normalise_input(
     if isinstance(source, bytes):
         return source, "application/octet-stream"
 
-    if hasattr(source, "read"):          # file-like object
+    if hasattr(source, "read"):  # file-like object
         data = source.read()
         if isinstance(data, str):
             data = data.encode("utf-8")
@@ -105,6 +114,7 @@ def _normalise_input(
 
 # ─── Main Encoder ─────────────────────────────────────────────────────────────
 
+
 class Encoder:
     """
     Full PixelSonics encoding pipeline.
@@ -119,7 +129,7 @@ class Encoder:
     def __init__(
         self,
         compression_level: int = 3,
-        ecc_block_size: int = 64,
+        ecc_nsym: int = 10,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
         freq_0: float = FREQ_0,
         freq_1: float = FREQ_1,
@@ -128,7 +138,7 @@ class Encoder:
         preamble_bits: int = PREAMBLE_BITS,
     ):
         self.compression_level = compression_level
-        self.ecc_block_size = ecc_block_size
+        self.ecc_nsym = ecc_nsym
         self.chunk_size = chunk_size
         self.freq_0 = freq_0
         self.freq_1 = freq_1
@@ -150,7 +160,7 @@ class Encoder:
         return compress(data, level=self.compression_level)
 
     def ecc_encode(self, data: bytes) -> bytes:
-        return ecc_encode(data, block_size=self.ecc_block_size)
+        return ecc_encode(data, nsym=self.ecc_nsym)
 
     def frame(self, data: bytes) -> list[bytes]:
         return frame(data, chunk_size=self.chunk_size)
@@ -187,9 +197,7 @@ class Encoder:
         packets = self.frame(ecc_encoded)
         return b"".join(packets)
 
-    def encode_to_waveform(
-        self, source, input_type: str | None = None
-    ) -> np.ndarray:
+    def encode_to_waveform(self, source, input_type: str | None = None) -> np.ndarray:
         """
         Full pipeline → audio waveform (float32 numpy array).
 
@@ -222,12 +230,13 @@ class Encoder:
             The wav_path that was written.
         """
         import wave
+
         waveform = self.encode_to_waveform(source, input_type)
         pcm = (waveform * 32767).astype(np.int16)
 
         with wave.open(wav_path, "w") as wf:
             wf.setnchannels(1)
-            wf.setsampwidth(2)           # 16-bit
+            wf.setsampwidth(2)  # 16-bit
             wf.setframerate(self.sample_rate)
             wf.writeframes(pcm.tobytes())
 

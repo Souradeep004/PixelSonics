@@ -8,18 +8,23 @@ Or:        python test/test_pixelsonics.py
 import sys
 import os
 
-# Allow imports from project root
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Ensure the PixelSonics project root (parent of test/) is on sys.path.
+# os.path.abspath + dirname twice works on Windows and Unix alike.
+_TEST_DIR = os.path.dirname(os.path.abspath(__file__))  # …/PixelSonics/test
+_ROOT_DIR = os.path.dirname(_TEST_DIR)  # …/PixelSonics
+if _ROOT_DIR not in sys.path:
+    sys.path.insert(0, _ROOT_DIR)
 
 import unittest
+import io
 import numpy as np
 
-from compression.compressor import compress, decompress, compression_ratio
-from framing.framer import frame, deframe, FramingError
-from ecc.ecc import encode as ecc_encode, decode as ecc_decode, ECCError
-from modulation.fsk import modulate, demodulate
-from encoder.encoder import Encoder
-from decoder.decoder import Decoder
+from compression import compress, decompress, compression_ratio
+from framing import frame, deframe, FramingError
+from ecc import encode as ecc_encode, decode as ecc_decode, ECCError
+from modulation import modulate, demodulate
+from encoder import Encoder
+from decoder import Decoder, DecoderError
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -151,46 +156,102 @@ class TestFraming(unittest.TestCase):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ECC Tests
+# ECC Tests  (Reed-Solomon via reedsolo)
 # ─────────────────────────────────────────────────────────────────────────────
+
+from ecc.ecc import ReedSolomonECC, xor_encode, xor_decode, _RS_AVAILABLE
 
 
 class TestECC(unittest.TestCase):
-    def test_roundtrip(self):
-        """Encode and decode without errors."""
-        data = b"Error correction test data!" * 4
+    def test_rs_available(self):
+        """reedsolo must be installed for these tests to be meaningful."""
+        self.assertTrue(
+            _RS_AVAILABLE, "reedsolo not installed — run: pip install reedsolo"
+        )
+
+    def test_roundtrip_short(self):
+        """RS encode/decode short payload."""
+        data = b"Hello Reed-Solomon!"
         encoded = ecc_encode(data)
-        decoded = ecc_decode(encoded)
-        self.assertEqual(decoded, data)
+        self.assertEqual(ecc_decode(encoded), data)
 
-    def test_overhead(self):
-        """Encoded data should be larger than original."""
-        data = b"X" * 64
-        encoded = ecc_encode(data, block_size=64)
-        # 64 data + 1 parity + 4 bytes length trailer = 69
-        self.assertEqual(len(encoded), 69)
+    def test_roundtrip_long(self):
+        """RS encode/decode payload spanning multiple blocks (>245 bytes)."""
+        data = bytes(range(256)) * 3  # 768 bytes → 4 blocks
+        encoded = ecc_encode(data)
+        self.assertEqual(ecc_decode(encoded), data)
 
-    def test_parity_error_detected(self):
-        """Flipping a data byte should cause ECCError."""
-        data = b"Parity check test data 1234567!"
-        encoded = bytearray(ecc_encode(data))
-        encoded[0] ^= 0x01  # flip a bit
+    def test_roundtrip_empty(self):
+        """RS encode/decode empty bytes."""
+        encoded = ecc_encode(b"")
+        self.assertEqual(ecc_decode(encoded), b"")
+
+    def test_encoded_larger_than_original(self):
+        """Encoded output must be larger than input."""
+        data = b"X" * 100
+        encoded = ecc_encode(data)
+        self.assertGreater(len(encoded), len(data))
+
+    def test_error_correction(self):
+        """RS must correct up to nsym//2 corrupted bytes per block."""
+        nsym = 10
+        rs = ReedSolomonECC(nsym=nsym)
+        data = b"Correctable error test! " * 5
+        encoded = bytearray(rs.encode(data))
+
+        # Corrupt nsym//2 = 5 bytes in the first block
+        for i in range(5):
+            encoded[i] ^= 0xFF
+
+        recovered = rs.decode(bytes(encoded))
+        self.assertEqual(recovered, data)
+
+    def test_too_many_errors_raises(self):
+        """More than nsym//2 errors per block should raise ECCError."""
+        nsym = 10
+        rs = ReedSolomonECC(nsym=nsym)
+        data = b"Uncorrectable!" * 20
+        encoded = bytearray(rs.encode(data))
+
+        # Corrupt nsym//2 + 1 = 6 bytes — beyond correction capacity
+        for i in range(6):
+            encoded[i] ^= 0xFF
+
         with self.assertRaises(ECCError):
-            ecc_decode(bytes(encoded))
+            rs.decode(bytes(encoded))
 
-    def test_empty(self):
-        """ECC encode/decode empty bytes."""
-        encoded = ecc_encode(b"", block_size=64)
-        decoded = ecc_decode(encoded)
-        self.assertEqual(decoded, b"")
+    def test_different_nsym_values(self):
+        """RS roundtrip works for various nsym values."""
+        data = b"nsym variation test " * 10
+        for nsym in (4, 10, 20, 32):
+            rs = ReedSolomonECC(nsym=nsym)
+            encoded = rs.encode(data)
+            self.assertEqual(rs.decode(encoded), data, f"Failed for nsym={nsym}")
 
-    def test_various_block_sizes(self):
-        """ECC works correctly with different block sizes."""
+    def test_overhead_bytes(self):
+        """overhead_bytes() returns a value larger than the input size."""
+        rs = ReedSolomonECC(nsym=10)
+        self.assertGreater(rs.overhead_bytes(100), 0)
+
+    def test_max_correctable_errors(self):
+        """max_correctable_errors() == nsym // 2."""
+        for nsym in (4, 10, 20):
+            rs = ReedSolomonECC(nsym=nsym)
+            self.assertEqual(rs.max_correctable_errors(), nsym // 2)
+
+    def test_xor_fallback_roundtrip(self):
+        """XOR parity fallback still works independently."""
         data = bytes(range(128))
-        for bs in (8, 16, 32, 64, 128):
-            encoded = ecc_encode(data, block_size=bs)
-            decoded = ecc_decode(encoded, block_size=bs)
-            self.assertEqual(decoded, data, f"Failed for block_size={bs}")
+        encoded = xor_encode(data)
+        self.assertEqual(xor_decode(encoded), data)
+
+    def test_xor_fallback_error_detected(self):
+        """XOR fallback detects a flipped byte."""
+        data = b"XOR parity test data!!!!!!!!!!!"
+        encoded = bytearray(xor_encode(data))
+        encoded[0] ^= 0x01
+        with self.assertRaises(ECCError):
+            xor_decode(bytes(encoded))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
