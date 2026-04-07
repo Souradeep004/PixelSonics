@@ -1,6 +1,7 @@
+# To add folder and check recursively about it's presence
+__pycache__/        
 venv/
 test/
 
+# To add file
 test_pixelsonics.py
-
-./__pycache__/
