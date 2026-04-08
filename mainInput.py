@@ -1,3 +1,12 @@
+import wave
+import time
+
+from encoder.encoder import Encoder
+
+import sys
+import os
+
+
 """
 PixelSonics - mainInput.py
 ==========================
@@ -16,35 +25,29 @@ Supported input formats:  .txt  .csv  .pdf  .png  .jpg  .jpeg  .bmp  .gif
 Output:  a .wav file that can be stored on disk and fed into mainOutput.py
 """
 
-import sys
-import os
-
 # ── Make sure PixelSonics root is on sys.path regardless of where this
 #    script lives or how it is invoked. ────────────────────────────────
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
-import wave
-import time
-
-from encoder.encoder import Encoder
 
 # ─── Supported extensions → human label ──────────────────────────────────────
 
 SUPPORTED_EXTENSIONS = {
-    ".txt":  "Text file",
-    ".csv":  "CSV file",
-    ".pdf":  "PDF file",
-    ".png":  "PNG image",
-    ".jpg":  "JPEG image",
+    ".txt": "Text file",
+    ".csv": "CSV file",
+    ".pdf": "PDF file",
+    ".png": "PNG image",
+    ".jpg": "JPEG image",
     ".jpeg": "JPEG image",
-    ".bmp":  "BMP image",
-    ".gif":  "GIF image",
+    ".bmp": "BMP image",
+    ".gif": "GIF image",
 }
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _fmt_bytes(n: int) -> str:
     """Human-readable file size."""
@@ -92,6 +95,7 @@ def _wav_info(wav_path: str) -> tuple[int, float]:
 
 # ─── Core encode function ─────────────────────────────────────────────────────
 
+
 def encode_file(input_path: str, output_path: str) -> None:
     """
     Run the full PixelSonics encoding pipeline on *input_path* and write
@@ -121,10 +125,18 @@ def encode_file(input_path: str, output_path: str) -> None:
 
     print("  [2/4] Compressing  (zstd) ...")
     with_header = enc.add_header(raw_bytes, media_type)
-    compressed = enc.compress(with_header)
-    ratio = len(with_header) / max(len(compressed), 1)
-    print(f"         {_fmt_bytes(len(with_header))} → {_fmt_bytes(len(compressed))}  "
-          f"(ratio {ratio:.2f}x)")
+    compressed, was_compressed = enc.compress(with_header)
+    if was_compressed:
+        ratio = len(with_header) / max(len(compressed) - 1, 1)  # -1 for flag byte
+        print(
+            f"         {_fmt_bytes(len(with_header))} → {_fmt_bytes(len(compressed))}  "
+            f"(ratio {ratio:.2f}x)"
+        )
+    else:
+        print(
+            f"         {_fmt_bytes(len(with_header))} — compression skipped "
+            f"(data is already dense, passing raw)"
+        )
 
     print("  [3/4] Applying Reed-Solomon ECC ...")
     ecc_encoded = enc.ecc_encode(compressed)
@@ -140,6 +152,7 @@ def encode_file(input_path: str, output_path: str) -> None:
     # Write WAV
     import numpy as np
     import wave as _wave
+
     pcm = (waveform * 32767).astype(np.int16)
     with _wave.open(output_path, "w") as wf:
         wf.setnchannels(1)
@@ -165,6 +178,7 @@ def encode_file(input_path: str, output_path: str) -> None:
 
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     # ── Resolve input path ────────────────────────────────────────────────────

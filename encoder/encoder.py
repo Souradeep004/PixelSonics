@@ -1,3 +1,23 @@
+from __future__ import annotations
+
+import json
+import os
+import struct
+
+import numpy as np
+
+from compression import smart_compress
+from ecc import encode as ecc_encode
+from framing import frame, DEFAULT_CHUNK_SIZE
+from modulation import (
+    modulate,
+    SAMPLE_RATE,
+    BIT_DURATION,
+    PREAMBLE_BITS,
+    FREQ_0,
+    FREQ_1,
+)
+
 """
 PixelSonics - Encoder
 
@@ -9,27 +29,6 @@ and produces a transmission-ready audio waveform by running the full pipeline:
 The byte stream is prefixed with a compact JSON header so the decoder can
 reconstruct the original file format without out-of-band information.
 """
-
-from __future__ import annotations
-
-import io
-import json
-import os
-import struct
-
-import numpy as np
-
-from compression import compress
-from ecc import encode as ecc_encode
-from framing import frame, DEFAULT_CHUNK_SIZE
-from modulation import (
-    modulate,
-    SAMPLE_RATE,
-    BIT_DURATION,
-    PREAMBLE_BITS,
-    FREQ_0,
-    FREQ_1,
-)
 
 # ─── Supported input types ───────────────────────────────────────────────────
 
@@ -157,8 +156,12 @@ class Encoder:
         """Prepend metadata header to raw bytes."""
         return _build_header(media_type, len(raw)) + raw
 
-    def compress(self, data: bytes) -> bytes:
-        return compress(data, level=self.compression_level)
+    def compress(self, data: bytes) -> tuple[bytes, bool]:
+        """
+        Compress *data* with zstd only if it actually shrinks.
+        Returns (encoded_bytes, was_compressed).
+        """
+        return smart_compress(data, level=self.compression_level)
 
     def ecc_encode(self, data: bytes) -> bytes:
         return ecc_encode(data, nsym=self.ecc_nsym)
@@ -193,7 +196,7 @@ class Encoder:
         """
         raw, media_type = self.normalise(source, input_type)
         with_header = self.add_header(raw, media_type)
-        compressed = self.compress(with_header)
+        compressed, _ = self.compress(with_header)
         ecc_encoded = self.ecc_encode(compressed)
         packets = self.frame(ecc_encoded)
         return b"".join(packets)
@@ -211,7 +214,7 @@ class Encoder:
         """
         raw, media_type = self.normalise(source, input_type)
         with_header = self.add_header(raw, media_type)
-        compressed = self.compress(with_header)
+        compressed, _ = self.compress(with_header)
         ecc_encoded = self.ecc_encode(compressed)
         packets = self.frame(ecc_encoded)
         return self.modulate_packets(packets)

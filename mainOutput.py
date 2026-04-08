@@ -1,11 +1,9 @@
-import io
-import json
-import struct
 import sys
 import os
 import time
 
 from decoder.decoder import Decoder, DecoderError
+
 
 """
 PixelSonics - mainOutput.py
@@ -13,7 +11,7 @@ PixelSonics - mainOutput.py
 Decodes a WAV file produced by mainInput.py and reconstructs the original
 file using the full PixelSonics reverse pipeline:
 
-    WAV → FSK Demodulate → Deframe → ECC Decode (RS) → Decompress → Original File
+    WAV → FSK Demodulate → Deframe → ECC Decode → Decompress → Original File
 
 Usage
 -----
@@ -126,9 +124,9 @@ def decode_file(wav_path: str, output_path: str) -> None:
 
     with _wave.open(wav_path, "r") as wf:
         sample_rate = wf.getframerate()
-        n_frames = wf.getnframes()
-        duration = n_frames / sample_rate
-        raw_pcm = wf.readframes(n_frames)
+        n_frames    = wf.getnframes()
+        duration    = n_frames / sample_rate
+        raw_pcm     = wf.readframes(n_frames)
 
     print(f"         Sample rate : {sample_rate} Hz")
     print(f"         Duration    : {duration:.1f} s  ({n_frames:,} samples)")
@@ -140,16 +138,16 @@ def decode_file(wav_path: str, output_path: str) -> None:
         )
 
     pcm = np.frombuffer(raw_pcm, dtype=np.int16).astype(np.float32) / 32767.0
+    raw_bytes = dec.demodulate_packet(pcm)
 
     print("  [2/4] Splitting packets and deframing ...")
 
-    raw_bytes = dec.demodulate_packet(pcm)
-
     from decoder.decoder import _split_packets
-    packets = _split_packets(raw_bytes)
+    from framing import deframe
+
+    packets  = _split_packets(raw_bytes)
     print(f"         Found {len(packets)} packet(s)")
 
-    from framing import deframe
     assembled = deframe(packets)
     print(f"         Assembled   : {_fmt_bytes(len(assembled))}")
 
@@ -159,17 +157,13 @@ def decode_file(wav_path: str, output_path: str) -> None:
 
     print("  [4/4] Decompressing (zstd) and reading header ...")
     decompressed = dec.decompress(ecc_checked)
-
-    stream = io.BytesIO(decompressed)
-    length_bytes = stream.read(4)
-    header_len, = struct.unpack(">I", length_bytes)
-    header_json = stream.read(header_len)
-    meta = json.loads(header_json.decode("utf-8"))
-    media_type = meta.get("type", "application/octet-stream")
-    declared_size = meta.get("size", -1)
-    payload = stream.read()
+    result       = dec.strip_header(decompressed)
 
     elapsed = time.time() - t0
+
+    media_type    = result.media_type
+    declared_size = result.original_size
+    payload       = result.data
 
     print(f"         Media type  : {media_type}")
     print(f"         Declared sz : {_fmt_bytes(declared_size)}")
@@ -188,8 +182,7 @@ def decode_file(wav_path: str, output_path: str) -> None:
     out_dir = os.path.dirname(os.path.abspath(output_path))
     os.makedirs(out_dir, exist_ok=True)
 
-    with open(output_path, "wb") as f:
-        f.write(payload)
+    result.save(output_path)
 
     print()
     print("=" * 56)
@@ -220,10 +213,6 @@ def main() -> None:
     if not os.path.isfile(wav_path):
         print(f"\n  Error: File not found: {wav_path!r}\n")
         sys.exit(1)
-
-    # ── Peek at the WAV to find the media type (needed for default out path) ──
-    # We do a minimal pre-decode just to read the header for the suggested name.
-    # The full decode in decode_file() will redo this cleanly.
 
     # ── Resolve output path ───────────────────────────────────────────────────
     if len(sys.argv) >= 3:

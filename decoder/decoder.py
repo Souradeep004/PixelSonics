@@ -1,15 +1,6 @@
-"""
-PixelSonics - Decoder
-
-Reverses the full encoding pipeline:
-
-  Audio → Demodulate → Deframe → ECC Decode → Decompress → Strip Header → Original Bytes
-
-The decoder returns both the recovered bytes and the metadata header so the
-caller knows the original file type and size.
-"""
-
 from __future__ import annotations
+from framing.framer import SYNC_MAGIC, SYNC_SIZE, HEADER_SIZE, CRC_SIZE
+import struct as _struct
 
 import io
 import json
@@ -18,7 +9,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from compression import decompress
+from compression import smart_decompress
 from ecc import decode as ecc_decode, ECCError
 from framing import deframe, FramingError
 from modulation import (
@@ -29,6 +20,17 @@ from modulation import (
     FREQ_0,
     FREQ_1,
 )
+
+"""
+PixelSonics - Decoder
+
+Reverses the full encoding pipeline:
+
+  Audio → Demodulate → Deframe → ECC Decode → Decompress → Strip Header → Original Bytes
+
+The decoder returns both the recovered bytes and the metadata header so the
+caller knows the original file type and size.
+"""
 
 
 # ─── Result type ─────────────────────────────────────────────────────────────
@@ -138,7 +140,7 @@ class Decoder:
         return ecc_decode(data, nsym=self.ecc_nsym)
 
     def decompress(self, data: bytes) -> bytes:
-        return decompress(data)
+        return smart_decompress(data)
 
     def strip_header(self, data: bytes) -> DecodeResult:
         stream = io.BytesIO(data)
@@ -233,9 +235,6 @@ class Decoder:
 
 
 # ─── Packet stream splitter ──────────────────────────────────────────────────
-
-from framing.framer import SYNC_MAGIC, SYNC_SIZE, HEADER_SIZE, CRC_SIZE
-import struct as _struct
 
 
 def _split_packets(data: bytes) -> list[bytes]:

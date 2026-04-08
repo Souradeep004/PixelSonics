@@ -1,6 +1,8 @@
 __all__ = [
     "compress",
     "decompress",
+    "smart_compress",
+    "smart_decompress",
     "compression_ratio",
     "compress_stream",
     "decompress_stream",
@@ -9,6 +11,8 @@ __all__ = [
 from compression.compressor import (
     compress,
     decompress,
+    smart_compress,
+    smart_decompress,
     compression_ratio,
     compress_stream,
     decompress_stream,
