@@ -1,0 +1,10 @@
+services:
+  pixelsonics:
+    build: .
+    image: pixelsonics:latest
+    # Mount a local data directory so files can be passed in and out of the container.
+    # Usage:
+    #   docker compose run --rm pixelsonics python mainInput.py  /data/file.txt /data/out.wav
+    #   docker compose run --rm pixelsonics python mainOutput.py /data/out.wav  /data/
+    volumes:
+      - ./data:/data

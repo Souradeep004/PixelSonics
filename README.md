@@ -52,7 +52,45 @@ PixelSonics/
 ### Installation
 
 ```bash
-pip install zstandard numpy
+pip install zstandard numpy reedsolo
+```
+
+## Docker
+
+PixelSonics ships with a `Dockerfile` and a `docker-compose.yml` so it can run
+in any environment without manual dependency setup.
+
+### Build the image
+
+```bash
+docker build -t pixelsonics:latest .
+```
+
+### Encode a file (Docker)
+
+Create a `data/` directory alongside the project, place your input file in it,
+then run:
+
+```bash
+docker run --rm -v "$(pwd)/data:/data" pixelsonics \
+    python mainInput.py /data/file.txt /data/out.wav
+```
+
+### Decode a WAV (Docker)
+
+```bash
+docker run --rm -v "$(pwd)/data:/data" pixelsonics \
+    python mainOutput.py /data/out.wav /data/
+```
+
+### Using Docker Compose
+
+```bash
+# Encode
+docker compose run --rm pixelsonics python mainInput.py /data/file.txt /data/out.wav
+
+# Decode
+docker compose run --rm pixelsonics python mainOutput.py /data/out.wav /data/
 ```
 
 ### Transmit Text
